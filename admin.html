@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - APKBangla</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <div class="max-w-lg mx-auto bg-white p-6 rounded-2xl shadow-sm border mt-6">
+        <h2 class="text-xl font-black text-gray-800 mb-6 text-center">APKBangla অ্যাডমিন কন্ট্রোল</h2>
+        
+        <form id="uploadForm" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">সফটওয়্যারের নাম</label>
+                <input type="text" id="appName" required class="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500" placeholder="যেমন: WhatsApp Messenger">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">ভার্সন (Version)</label>
+                    <input type="text" id="appVersion" required class="w-full px-3 py-2 border rounded-xl text-sm outline-none" placeholder="যেমন: 2.24.5">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">সাইজ (Size)</label>
+                    <input type="text" id="appSize" required class="w-full px-3 py-2 border rounded-xl text-sm outline-none" placeholder="যেমন: 45.2 MB">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">ক্যাটাগরি</label>
+                <select id="appCategory" class="w-full px-3 py-2 border rounded-xl text-sm outline-none bg-white">
+                    <option value="Apps">Apps (অ্যাপস)</option>
+                    <option value="Games">Games (গেমস)</option>
+                    <option value="Tools">Tools (টুলস)</option>
+                    <option value="Social">Social (সোশ্যাল)</option>
+                    <option value="Others">Others (অন্যান্য)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">অ্যাপ বিবরণ (Description)</label>
+                <textarea id="appDesc" rows="3" required class="w-full px-3 py-2 border rounded-xl text-sm outline-none" placeholder="অ্যাপ সম্পর্কে বিস্তারিত লিখুন..."></textarea>
+            </div>
+
+            <div class="space-y-3 bg-gray-50 p-3 rounded-xl border">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">১. অ্যাপ লোগো (Image)</label>
+                    <input type="file" id="appLogo" accept="image/*" required class="text-xs w-full">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">২. স্ক্রিনশট (Screenshot Image)</label>
+                    <input type="file" id="appScreenshot" accept="image/*" required class="text-xs w-full">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">৩. এপিকে ফাইল (APK)</label>
+                    <input type="file" id="appApk" accept=".apk" required class="text-xs w-full">
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition text-sm">আপলোড শুরু করুন</button>
+        </form>
+        
+        <div id="status" class="mt-4 text-center text-xs font-bold hidden"></div>
+    </div>
+
+    <script>
+        // আপনার Supabase URL এবং Anon Key এখানে বসাবেন
+        const SUPABASE_URL = "YOUR_SUPABASE_URL_HERE";
+        const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const status = document.getElementById('status');
+            
+            const name = document.getElementById('appName').value;
+            const version = document.getElementById('appVersion').value;
+            const size = document.getElementById('appSize').value;
+            const category = document.getElementById('appCategory').value;
+            const description = document.getElementById('appDesc').value;
+            
+            const logoFile = document.getElementById('appLogo').files[0];
+            const screenshotFile = document.getElementById('appScreenshot').files[0];
+            const apkFile = document.getElementById('appApk').files[0];
+
+            btn.disabled = true;
+            btn.innerText = "ফাইল আপলোড হচ্ছে...";
+            status.classList.remove('hidden');
+            status.className = "mt-4 text-center text-xs font-bold text-blue-600";
+            status.innerText = "১/৩: ফাইল ক্লাউডে পাঠানো হচ্ছে, ব্যাক করবেন না...";
+
+            try {
+                const ts = Date.now();
+                
+                // ১. লোগো আপলোড
+                const logoName = ts + '_' + logoFile.name;
+                await supabaseClient.storage.from('apk-bucket').upload('logos/' + logoName, logoFile);
+                
+                // ২. স্ক্রিনশট আপলোড
+                status.innerText = "২/৩: স্ক্রিনশট আপলোড হচ্ছে...";
+                const screenshotName = ts + '_' + screenshotFile.name;
+                await supabaseClient.storage.from('apk-bucket').upload('screenshots/' + screenshotName, screenshotFile);
+
+                // ৩. APK আপলোড
+                status.innerText = "৩/৩: এপিকে ফাইল আপলোড হচ্ছে (সাইজ বড় হলে একটু সময় লাগবে)...";
+                const apkName = ts + '_' + apkFile.name;
+                await supabaseClient.storage.from('apk-bucket').upload('apks/' + apkName, apkFile);
+
+                // পাবলিক ইউআরএল জেনারেট
+                const logo_url = `${SUPABASE_URL}/storage/v1/object/public/apk-bucket/logos/${logoName}`;
+                const screenshot_url = `${SUPABASE_URL}/storage/v1/object/public/apk-bucket/screenshots/${screenshotName}`;
+                const apk_url = `${SUPABASE_URL}/storage/v1/object/public/apk-bucket/apks/${apkName}`;
+
+                // ডাটাবেজে তথ্য সেভ
+                status.innerText = "ডাটাবেজে অ্যাপ রেজিস্টার করা হচ্ছে...";
+                const { error: dbErr } = await supabaseClient.from('apps').insert([{
+                    name, version, size, category, description, logo_url, screenshot_url, apk_url
+                }]);
+
+                if (dbErr) throw dbErr;
+
+                status.className = "mt-4 text-center text-xs font-bold text-green-600";
+                status.innerText = "অভিনন্দন! অ্যাপটি সফলভাবে লাইভ হয়েছে।";
+                document.getElementById('uploadForm').reset();
+
+            } catch (err) {
+                status.className = "mt-4 text-center text-xs font-bold text-red-600";
+                status.innerText = "ভুল হয়েছে: " + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "আপলোড শুরু করুন";
+            }
+        });
+    </script>
+</body>
+</html>
+
